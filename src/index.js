@@ -32,6 +32,15 @@ let jugador1, jugador2;
 let turno = 1;
 let espera1 = 1, espera2 = 1;
 let fin = false;
+let semillas1 = 2, semillas2 = 2;
+
+// Estilo de las alertas: solo clases de Bootstrap
+const estiloSwal = {
+    popup: "bg-dark text-white border border-warning border-4 rounded-4 shadow-lg",
+    title: "text-warning fw-bold",
+    confirmButton: "btn btn-warning fw-bold px-4",
+    timerProgressBar: "bg-warning"
+};
 
 const barras = () => {
     if (jugador1) {
@@ -74,22 +83,46 @@ const remover_seleccion = (color, elementos) => {
 const msj_error = (msj) => {
     Swal.fire({
         icon: "warning",
-        title: "Error!",
-        text: msj
+        title: "¡Error!",
+        text: msj,
+        buttonsStyling: false,
+        customClass: estiloSwal
+    });
+};
+
+const mostrar_semilla = (nombre) => {
+    Swal.fire({
+        title: "¡Semilla del ermitaño!",
+        text: `${nombre} recuperó fuerzas`,
+        imageUrl: "/dist/public/img/Senzu bean.jpeg",
+        imageWidth: 120,
+        imageAlt: "Semilla del ermitaño",
+        timer: 1500,
+        timerProgressBar: true,
+        showConfirmButton: false,
+        buttonsStyling: false,
+        customClass: estiloSwal
     });
 };
 
 const btn_py1 = document.getElementById("btn_py1");
 const btn_py2 = document.getElementById("btn_py2");
 
+const badge1 = btn_py1.querySelector(".badge");
+const badge2 = btn_py2.querySelector(".badge");
+
 const actualizar_turnos = () => {
     [...btn_py1.querySelectorAll("button")].map(boton => {
-        const especial = boton.textContent.trim().toLowerCase().includes("ataque especial");
-        boton.disabled = fin || turno !== 1 || (especial && espera1 > 0);
+        const texto = boton.textContent.trim().toLowerCase();
+        const especial = texto.includes("ataque especial");
+        const sinSemillas = texto.includes("semilla") && semillas1 <= 0;
+        boton.disabled = fin || turno !== 1 || (especial && espera1 > 0) || sinSemillas;
     });
     [...btn_py2.querySelectorAll("button")].map(boton => {
-        const especial = boton.textContent.trim().toLowerCase().includes("ataque especial");
-        boton.disabled = fin || turno !== 2 || (especial && espera2 > 0);
+        const texto = boton.textContent.trim().toLowerCase();
+        const especial = texto.includes("ataque especial");
+        const sinSemillas = texto.includes("semilla") && semillas2 <= 0;
+        boton.disabled = fin || turno !== 2 || (especial && espera2 > 0) || sinSemillas;
     });
 };
 
@@ -104,26 +137,56 @@ const revisar_fin = () => {
         Swal.fire({
             icon: "success",
             title: "¡Combate terminado!",
-            text: `${ganador} (${personaje})Has derrotado a la sabandija`,
+            text: `${ganador} (${personaje}) Has derrotado a la sabandija`,
             allowOutsideClick: false,
-            allowEscapeKey: false
-        });
+            allowEscapeKey: false,
+            confirmButtonText: "Jugar de nuevo",
+            buttonsStyling: false,
+            customClass: estiloSwal
+        }).then(() => reiniciar());
     }, 1600);
     return true;
+};
+
+const reiniciar = () => {
+    jugador1 = undefined;
+    jugador2 = undefined;
+    pj1 = "";
+    pj2 = "";
+    turno = 1;
+    espera1 = 1;
+    espera2 = 1;
+    semillas1 = 2;
+    semillas2 = 2;
+    fin = false;
+
+    badge1.textContent = semillas1;
+    badge2.textContent = semillas2;
+
+    tarjetas.classList.add("d-none");
+    nombres.classList.remove("d-none");
+    player1.classList.remove("d-none");
+    player2.classList.remove("d-none");
+
+    nombre1.disabled = false;
+    nombre2.disabled = false;
+
+    remover_seleccion("danger", [...player1.querySelectorAll("img")]);
+    remover_seleccion("primary", [...player2.querySelectorAll("img")]);
 };
 
 const iniciar_combate = () => {
     nombres.classList.add("d-none");
     let intervalo;
     Swal.fire({
-        icon: "info",
-        title: "EL COBATE INICIA",
+        title: "¡EL COMBATE INICIA!",
         html: "Comienza en <b>5</b> segundos",
         timer: 5000,
         timerProgressBar: true,
         allowOutsideClick: false,
         allowEscapeKey: false,
         showConfirmButton: false,
+        customClass: estiloSwal,
         didOpen: () => {
             const contador = Swal.getHtmlContainer().querySelector("b");
             intervalo = setInterval(() => {
@@ -132,6 +195,7 @@ const iniciar_combate = () => {
         },
         willClose: () => clearInterval(intervalo)
     }).then(() => {
+        barras();
         tarjetas.classList.remove("d-none");
         actualizar_turnos();
     });
@@ -180,7 +244,7 @@ btn_player2.addEventListener("click", () => {
     if (nombre2.value == "") {
         return msj_error("Ingresa tu nombre jugador 2");
     } else if (pj2 == "") {
-        return msj_error("Debes ingresar tu nombre jugador 2");
+        return msj_error("Debes seleccionar un personaje jugador 2");
     }
     jugador2 = new Acciones(nombre2.value);
     nombre2.disabled = true;
@@ -216,6 +280,9 @@ if (btn_py1) {
                 cargar_ki(jugador1);
             } else if (accion.includes("semilla")) {
                 usar_semilla(jugador1);
+                semillas1--;
+                badge1.textContent = semillas1;
+                mostrar_semilla(nombre1.value);
             }
             if (especial) {
                 espera1 = 1;
@@ -251,6 +318,9 @@ if (btn_py2) {
                 cargar_ki(jugador2);
             } else if (accion.includes("semilla")) {
                 usar_semilla(jugador2);
+                semillas2--;
+                badge2.textContent = semillas2;
+                mostrar_semilla(nombre2.value);
             }
             if (especial) {
                 espera2 = 1;
